@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Admin Dashboard | View & Navigate Saved Locations</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <!-- Google Maps API for embedded map preview -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+        }
+
+        body {
+            background: #0f172a;
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+
+        .admin-header {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 1.5rem;
+            padding: 1.2rem 2rem;
+            margin-bottom: 1.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .title h1 {
+            color: #38bdf8;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .title p {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        .stats {
+            background: #1e293b;
+            padding: 0.5rem 1.2rem;
+            border-radius: 2rem;
+            color: #cbd5e1;
+        }
+
+        .stats span {
+            color: #4ade80;
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+
+        .refresh-btn {
+            background: #3b82f6;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 2rem;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #2563eb;
+            transform: scale(0.97);
+        }
+
+        /* Main Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 850px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Map Container */
+        .map-container {
+            background: #1e293b;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            height: 550px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Locations List Panel */
+        .locations-panel {
+            background: #1e293b;
+            border-radius: 1.5rem;
+            border: 1px solid #334155;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 550px;
+        }
+
+        .panel-header {
+            background: #0f172a;
+            padding: 1rem;
+            border-bottom: 1px solid #334155;
+            font-weight: bold;
+            color: #38bdf8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header small {
+            color: #facc15;
+            font-size: 0.7rem;
+        }
+
+        .locations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .location-card {
+            background: #0f172a;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            margin-bottom: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid #3b82f6;
+            position: relative;
+        }
+
+        .location-card:hover {
+            background: #2d3a4e;
+            transform: translateX(5px);
+            border-left-color: #facc15;
+        }
+
+        .location-card .coords {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #facc15;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .location-card .time {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        .location-card .accuracy {
+            font-size: 0.65rem;
+            color: #4ade80;
+            margin-top: 3px;
+        }
+
+        .open-map-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .open-map-btn:hover {
+            background: #059669;
+            transform: scale(0.96);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #64748b;
+            padding: 2rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #38bdf8;
+        }
+
+        .footer-note {
+            margin-top: 1.5rem;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.7rem;
+        }
+
+        .badge {
+            background: #3b82f6;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 0.6rem;
+            margin-left: 8px;
+        }
+
+        .external-link-icon {
+            font-size: 0.8rem;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+
+        .instruction-tip {
+            background: #334155;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 0.65rem;
+            color: #cbd5e1;
+            margin-top: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-header">
+    <div class="title">
+        <h1>📍 Admin Dashboard <span style="font-size: 0.8rem;">🗺️ Location Manager</span></h1>
+        <p>Firebase Realtime Database | Click any location to open in Google Maps</p>
+    </div>
+    <div class="stats">
+        📍 Total Locations: <span id="totalCount">0</span>
+    </div>
+    <button class="refresh-btn" id="refreshBtn">
+        🔄 Refresh Data
+    </button>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Embedded Map Preview -->
+   
+    <!-- Locations List Panel -->
+    <div class="locations-panel">
+        <div class="panel-header">
+            📋 Saved Locations
+            <small>⬅️ Click any card → Open Google Maps</small>
+        </div>
+        <div class="locations-list" id="locationsList">
+            <div class="loading">Loading locations from Firebase...</div>
+        </div>
+        <div class="instruction-tip">
+            💡 <strong>Tip:</strong> Click on any location card to open it directly in Google Maps with driving directions.
+            The embedded map shows all saved points.
+        </div>
+    </div>
+</div>
+<div class="footer-note">
+    🗺️ <strong>Google Maps Integration</strong> — Each saved location opens a new tab with the exact latitude/longitude. 
+    Data fetched from 'geo_locations', 'cyber_awareness_locations', and 'locations' nodes.
+</div>
+
+<script>
+    // ======================= FIREBASE CONFIGURATION =======================
+    const firebaseConfig = {
+        apiKey: "AIzaSyDNxE0VN3dwGmKK6cpbhHTorWtJWkoAFio",
+        authDomain: "login-with-firebase-8471d.firebaseapp.com",
+        databaseURL: "https://login-with-firebase-8471d-default-rtdb.firebaseio.com",
+        projectId: "login-with-firebase-8471d",
+        storageBucket: "login-with-firebase-8471d.firebasestorage.app",
+        messagingSenderId: "230816036738",
+        appId: "1:230816036738:web:a23bf3f1ff6eb0242e019b",
+        measurementId: "G-TP6ZVFQT7K"
+    };
+
+    // Initialize Firebase
+    let database;
+    let allLocations = [];      // store all location objects
+    let map;
+    let markers = [];           // store markers for cleanup
+    
+    try {
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+        console.log("✅ Firebase Admin connected, rules: read=true");
+    } catch (err) {
+        console.error("Firebase init error:", err);
+        document.getElementById("locationsList").innerHTML = '<div class="empty-state">❌ Firebase connection failed. Check config.</div>';
+    }
+
+    // ========== GOOGLE MAPS INITIALIZATION (EMBEDDED PREVIEW) ==========
+    function initMap() {
+        const defaultCenter = { lat: 20.5937, lng: 78.9629 }; // India center
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: defaultCenter,
+            zoom: 4,
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            styles: [
+                { elementType: "geometry", stylers: [{ color: "#0f172a" }] },
+                { elementType: "labels.text.fill", stylers: [{ color: "#cbd5e1" }] },
+                { elementType: "labels.text.stroke", stylers: [{ color: "#0f172a" }] },
+                { featureType: "water", elementType: "geometry", stylers: [{ color: "#1e3a5f" }] }
+            ]
+        });
+        console.log("Google Maps embedded preview ready");
+        // After map is ready, update markers if locations exist
+        if (allLocations.length > 0) {
+            updateMapMarkers();
+        }
+    }
+
+    // Helper: Clear all markers from map
+    function clearMarkers() {
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+    }
+
+    // Update embedded map with current locations array
+    function updateMapMarkers() {
+        if (!map) return;
+        clearMarkers();
+        
+        if (allLocations.length === 0) return;
+        
+        // Create bounds to fit all markers
+        const bounds = new google.maps.LatLngBounds();
+        
+        allLocations.forEach(loc => {
+            const lat = parseFloat(loc.lat || loc.latitude);
+            const lng = parseFloat(loc.lng || loc.longitude);
+            if (isNaN(lat) || isNaN(lng)) return;
+            
+            const position = { lat: lat, lng: lng };
+            bounds.extend(position);
+            
+            // Create marker
+            const marker = new google.maps.Marker({
+                position: position,
+                map: map,
+                title: `Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+                animation: google.maps.Animation.DROP
+            });
+            
+            // Info window content with direct Google Maps link
+            const timeStr = loc.readableTime || (loc.timestamp ? new Date(loc.timestamp).toLocaleString() : 'Unknown time');
+            const accuracyStr = loc.accuracy ? `${Math.round(loc.accuracy)}m` : (loc.accuracyMeters ? `${Math.round(loc.accuracyMeters)}m` : 'N/A');
+            const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}&hl=en`;
+            
+            const infoContent = `
+                <div style="color:#0f172a; font-family:sans-serif; padding:5px; min-width:180px;">
+                    <strong>📍 Saved Location</strong><br>
+                    Lat: ${lat.toFixed(6)}<br>
+                    Lng: ${lng.toFixed(6)}<br>
+                    🕒 ${timeStr}<br>
+                    🎯 Accuracy: ${accuracyStr}<br>
+                    <a href="${googleMapsUrl}" target="_blank" style="display:inline-block; margin-top:8px; background:#10b981; color:white; padding:4px 12px; border-radius:20px; text-decoration:none; font-size:12px;">🗺️ Open in Google Maps →</a>
+                </div>
+            `;
+            
+            const infoWindow = new google.maps.InfoWindow({ content: infoContent });
+            marker.addListener("click", () => {
+                infoWindow.open(map, marker);
+            });
+            
+            markers.push(marker);
+        });
+        
+        // Fit bounds if there are markers
+        if (markers.length > 0) {
+            map.fitBounds(bounds);
+            if (markers.length === 1) {
+                map.setZoom(14);
+            }
+        }
+    }
+
+    // ========== FUNCTION TO OPEN GOOGLE MAPS URL ==========
+    function openInGoogleMaps(lat, lng) {
+        if (isNaN(lat) || isNaN(lng)) {
+            console.error("Invalid coordinates");
+            return;
+        }
+        // Create Google Maps URL with directions/marker
+        const url = `https://www.google.com/maps?q=${lat},${lng}&z=16&hl=en`;
+        window.open(url, '_blank');
+    }
+
+    // ========== FETCH LOCATIONS FROM FIREBASE (multiple nodes) ==========
+    async function fetchAllLocations() {
+        if (!database) {
+            document.getElementById("locationsList").innerHTML = '<div class="empty-state">❌ Firebase not initialized</div>';
+            return [];
+        }
+        
+        document.getElementById("locationsList").innerHTML = '<div class="loading">🔄 Fetching locations from Firebase...</div>';
+        let combinedLocations = [];
+        
+        try {
+            // 1) Fetch from 'geo_locations' node
+            const geoRef = database.ref('geo_locations');
+            const geoSnapshot = await geoRef.once('value');
+            if (geoSnapshot.exists()) {
+                const data = geoSnapshot.val();
+                for (let key in data) {
+                    const item = data[key];
+                    if (item && (item.latitude || item.lat)) {
+                        combinedLocations.push({
+                            id: key,
+                            lat: item.latitude ?? item.lat,
+                            lng: item.longitude ?? item.lng,
+                            timestamp: item.timestamp || item.capturedAt,
+                            readableTime: item.readableTime,
+                            accuracy: item.accuracy ?? item.accuracyMeters,
+                            source: item.source || 'geo_locations'
+                        });
+                    }
+                }
+            }
+            
+            // 2) Fetch from 'cyber_awareness_locations' node
+            const cyberRef = database.ref('cyber_awareness_locations');
+            const cyberSnapshot = await cyberRef.once('value');
+            if (cyberSnapshot.exists()) {
+                const data = cyberSnapshot.val();
+                for (let key in data) {
+                    const item = data[key];
+                    if (item && (item.lat || item.latitude)) {
+                        combinedLocations.push({
+                            id: `cyber_${key}`,
+                            lat: item.lat ?? item.latitude,
+                            lng: item.lng ?? item.longitude,
+                            timestamp: item.timestamp,
+                            readableTime: item.readableTime,
+                            accuracy: item.accuracyMeters ?? item.accuracy,
+                            source: item.source || 'cyber_awareness'
+                        });
+                    }
+                }
+            }
+            
+            // 3) Fetch from 'locations' node (generic)
+            const genericRef = database.ref('locations');
+            const genericSnapshot = await genericRef.once('value');
+            if (genericSnapshot.exists()) {
+                const data = genericSnapshot.val();
+                for (let key in data) {
+                    const item = data[key];
+                    if (item && (item.lat || item.latitude)) {
+                        combinedLocations.push({
+                            id: `loc_${key}`,
+                            lat: item.lat ?? item.latitude,
+                            lng: item.lng ?? item.longitude,
+                            timestamp: item.timestamp,
+                            readableTime: item.readableTime,
+                            accuracy: item.accuracy ?? item.accuracyMeters,
+                            source: item.source || 'locations'
+                        });
+                    }
+                }
+            }
+            
+            // Remove potential duplicates (same lat/lng & close timestamp) but keep all for transparency
+            // Sort by timestamp (newest first)
+            combinedLocations.sort((a, b) => {
+                const timeA = a.timestamp || 0;
+                const timeB = b.timestamp || 0;
+                return timeB - timeA;
+            });
+            
+            allLocations = combinedLocations;
+            return combinedLocations;
+            
+        } catch (err) {
+            console.error("Error fetching locations:", err);
+            document.getElementById("locationsList").innerHTML = `<div class="empty-state">⚠️ Error loading data: ${err.message}</div>`;
+            return [];
+        }
+    }
+    
+    // ========== RENDER LOCATIONS LIST WITH CLICKABLE GOOGLE MAPS BUTTON ==========
+    function renderLocationsList(locations) {
+        const container = document.getElementById("locationsList");
+        const totalSpan = document.getElementById("totalCount");
+        
+        if (!locations || locations.length === 0) {
+            container.innerHTML = '<div class="empty-state">📭 No saved locations found in Firebase.<br><br>🔹 Use the location capture page to add coordinates.<br>🔹 Then click refresh to see them here.</div>';
+            totalSpan.innerText = "0";
+            return;
+        }
+        
+        totalSpan.innerText = locations.length;
+        
+        let html = '';
+        locations.forEach((loc, idx) => {
+            const latVal = parseFloat(loc.lat).toFixed(6);
+            const lngVal = parseFloat(loc.lng).toFixed(6);
+            const timeDisplay = loc.readableTime || (loc.timestamp ? new Date(loc.timestamp).toLocaleString() : 'No timestamp');
+            const accuracyText = loc.accuracy ? `${Math.round(loc.accuracy)}m` : 'N/A';
+            const sourceIcon = loc.source === 'geo_locations' ? '🗺️' : (loc.source === 'cyber_awareness' ? '⚠️' : '📍');
+            
+            html += `
+                <div class="location-card" data-lat="${loc.lat}" data-lng="${loc.lng}">
+                    <div class="coords">
+                        <span>${sourceIcon} ${latVal}, ${lngVal}</span>
+                        <span style="font-size:0.65rem; background:#334155; padding:2px 6px; border-radius:12px;">${loc.source || 'capture'}</span>
+                    </div>
+                    <div class="time">🕒 ${timeDisplay}</div>
+                    <div class="accuracy">🎯 Accuracy: ${accuracyText}</div>
+                    <button class="open-map-btn" data-lat="${loc.lat}" data-lng="${loc.lng}">
+                        🗺️ Open in Google Maps ↗
+                    </button>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+        // Add click event listeners to each card (full card click opens Google Maps)
+        document.querySelectorAll('.location-card').forEach(card => {
+            const lat = parseFloat(card.dataset.lat);
+            const lng = parseFloat(card.dataset.lng);
+            
+            // Make the entire card clickable (but button also works, we'll prevent double trigger)
+            card.addEventListener('click', (e) => {
+                // If the click target is the button, don't double-fire
+                if (e.target.classList && e.target.classList.contains('open-map-btn')) {
+                    return;
+                }
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    openInGoogleMaps(lat, lng);
+                }
+            });
+        });
+        
+        // Add separate listeners for buttons (for clarity)
+        document.querySelectorAll('.open-map-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent card double click
+                const lat = parseFloat(btn.dataset.lat);
+                const lng = parseFloat(btn.dataset.lng);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    openInGoogleMaps(lat, lng);
+                }
+            });
+        });
+    }
+    
+    // ========== MAIN REFRESH FUNCTION: FETCH + UPDATE UI + MAP ==========
+    async function refreshDashboard() {
+        const refreshBtn = document.getElementById("refreshBtn");
+        const originalText = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = "⏳ Loading...";
+        refreshBtn.disabled = true;
+        
+        try {
+            const locations = await fetchAllLocations();
+            renderLocationsList(locations);
+            if (map) {
+                updateMapMarkers();
+            } else {
+                if (locations.length > 0) {
+                    console.log("Map not ready yet, markers will appear after map loads.");
+                }
+            }
+        } catch (err) {
+            console.error("Refresh error:", err);
+            document.getElementById("locationsList").innerHTML = '<div class="empty-state">Error loading data. Check console.</div>';
+        } finally {
+            refreshBtn.innerHTML = originalText;
+            refreshBtn.disabled = false;
+        }
+    }
+    
+    // ========== EVENT LISTENERS ==========
+    document.getElementById("refreshBtn").addEventListener("click", refreshDashboard);
+    
+    // ========== LOAD DATA ON PAGE START ==========
+    window.initMap = function() {
+        initMap();
+        if (allLocations.length > 0) {
+            updateMapMarkers();
+        } else {
+            refreshDashboard().then(() => {
+                if (map && allLocations.length > 0) updateMapMarkers();
+            });
+        }
+    };
+    
+    // If Firebase is ready, pre-fetch data
+    if (database) {
+        fetchAllLocations().then(locs => {
+            allLocations = locs;
+            renderLocationsList(locs);
+            if (map) updateMapMarkers();
+            document.getElementById("totalCount").innerText = locs.length;
+        }).catch(err => console.warn(err));
+    } else {
+        document.getElementById("locationsList").innerHTML = '<div class="empty-state">⛔ Firebase not connected. Check your config and rules (read: true).</div>';
+    }
+    
+    // Fallback: if google maps script takes too long, show message
+    setTimeout(() => {
+        if (!map) {
+            console.log("Google Maps still loading...");
+        }
+    }, 2000);
+</script>
+</body>
+</html>
